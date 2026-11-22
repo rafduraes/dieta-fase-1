@@ -535,7 +535,9 @@ export default function App() {
                           </span>
                         </td>
                         <td className="food-category">{food.category}</td>
-                        <td className="food-notes">{food.notes ?? '—'}</td>
+                        <td className={`food-notes ${!food.notes ? 'is-empty' : ''}`}>
+                          {food.notes ?? '—'}
+                        </td>
                         <td>
                           <div
                             className="meal-hover-menu"
@@ -664,10 +666,28 @@ export default function App() {
               </select>
             </div>
 
-            <p className="panel-hint">
-              Arraste para uma refeição ou clique no <strong>+</strong> para adicionar em{' '}
-              <strong>{activeMealName ?? 'uma refeição'}</strong>.
-            </p>
+            <div className="builder-target-bar">
+              <label htmlFor="builder-active-meal" className="builder-target-label">
+                Adicionar com <strong>+</strong> em:
+              </label>
+              <select
+                id="builder-active-meal"
+                className="compact-select builder-target-select"
+                value={activeMealId}
+                onChange={(e) => setActiveMealId(e.target.value)}
+                disabled={meals.length === 0}
+              >
+                {meals.length === 0 ? (
+                  <option value="">Criar nova refeição</option>
+                ) : (
+                  meals.map((meal) => (
+                    <option key={meal.id} value={meal.id}>
+                      {meal.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
 
             <div className="ingredients-list">
               {builderFoods.length === 0 ? (
