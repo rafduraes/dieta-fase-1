@@ -524,62 +524,53 @@ select {
   line-height: 1.4;
 }
 
-/* Split dropdown button in table */
-.split-action {
+/* Hover dropdown button in table */
+.meal-hover-menu {
   position: relative;
-  display: inline-flex;
-  align-items: stretch;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+  display: inline-block;
 }
 
-.split-main,
-.split-toggle {
-  border: none;
-  background: transparent;
+.add-meal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--text);
   font-size: 12.5px;
   font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  transition: background-color 0.14s ease;
-}
-
-.split-main {
-  gap: 5px;
-  padding: 6px 10px;
   white-space: nowrap;
-  border-top-left-radius: 7px;
-  border-bottom-left-radius: 7px;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
 }
 
-.split-toggle {
-  padding: 6px 7px;
-  border-left: 1px solid var(--border);
-  color: var(--text-muted);
-  border-top-right-radius: 7px;
-  border-bottom-right-radius: 7px;
-}
-
-.split-main:hover,
-.split-toggle:hover {
+.meal-hover-menu:hover .add-meal-btn,
+.add-meal-btn:hover {
   background: var(--surface-subtle);
-  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.add-meal-chevron {
+  color: var(--text-muted);
+}
+
+.row-dropdown-wrap {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  padding-top: 6px;
+  z-index: 40;
 }
 
 .row-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 195px;
+  min-width: 210px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: var(--shadow-md);
   padding: 5px;
-  z-index: 40;
 }
 
 .row-dropdown-header {
@@ -1088,7 +1079,7 @@ select {
     padding: 4px 0;
   }
 
-  .row-dropdown {
+  .row-dropdown-wrap {
     left: 0;
     right: auto;
   }

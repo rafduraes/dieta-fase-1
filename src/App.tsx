@@ -498,31 +498,9 @@ export default function App() {
                 ))}
               </div>
 
-              <div className="table-target-meal">
-                <label htmlFor="target-meal-select" className="target-meal-label">
-                  Refeição padrão:
-                </label>
-                <select
-                  id="target-meal-select"
-                  className="target-meal-select"
-                  value={activeMealId}
-                  onChange={(e) => setActiveMealId(e.target.value)}
-                  disabled={meals.length === 0}
-                >
-                  {meals.length === 0 ? (
-                    <option value="">Nenhuma refeição</option>
-                  ) : (
-                    meals.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-                <span className="results-meta">
-                  <strong>{tableFoods.length}</strong> de {FOODS.length}
-                </span>
-              </div>
+              <span className="results-meta">
+                Mostrando <strong>{tableFoods.length}</strong> de {FOODS.length} itens
+              </span>
             </div>
           </section>
 
@@ -560,64 +538,59 @@ export default function App() {
                         <td className="food-notes">{food.notes ?? '—'}</td>
                         <td>
                           <div
-                            className="split-action"
+                            className="meal-hover-menu"
                             ref={isDropdownOpen ? dropdownRef : undefined}
+                            onMouseEnter={() => setOpenRowDropdownId(food.id)}
+                            onMouseLeave={() =>
+                              setOpenRowDropdownId((prev) =>
+                                prev === food.id ? null : prev
+                              )
+                            }
                           >
                             <button
                               type="button"
-                              className="split-main"
-                              onClick={() => handleQuickAdd(food)}
-                              title={
-                                activeMealName
-                                  ? `Adicionar em ${activeMealName}`
-                                  : 'Criar refeição e adicionar'
-                              }
-                            >
-                              <Plus size={14} />
-                              <span>{activeMealName ?? 'Adicionar'}</span>
-                            </button>
-                            <button
-                              type="button"
-                              className="split-toggle"
-                              aria-label={`Escolher refeição para ${food.name}`}
+                              className="add-meal-btn"
+                              aria-haspopup="menu"
                               aria-expanded={isDropdownOpen}
                               onClick={() =>
                                 setOpenRowDropdownId(isDropdownOpen ? null : food.id)
                               }
                             >
-                              <ChevronDown size={14} />
+                              <Plus size={14} />
+                              <span>Adicionar a uma refeição</span>
+                              <ChevronDown size={13} className="add-meal-chevron" />
                             </button>
 
                             {isDropdownOpen && (
-                              <div className="row-dropdown" role="menu">
-                                <div className="row-dropdown-header">Adicionar em:</div>
-                                {meals.length === 0 ? (
-                                  <button
-                                    type="button"
-                                    className="row-dropdown-item"
-                                    onClick={() => handleQuickAdd(food)}
-                                  >
-                                    <Plus size={13} />
-                                    Criar &quot;Minha refeição&quot;
-                                  </button>
-                                ) : (
-                                  meals.map((meal) => (
+                              <div className="row-dropdown-wrap">
+                                <div className="row-dropdown" role="menu">
+                                  <div className="row-dropdown-header">Escolha a refeição</div>
+                                  {meals.length === 0 ? (
                                     <button
-                                      key={meal.id}
                                       type="button"
-                                      role="menuitem"
-                                      className={`row-dropdown-item ${
-                                        meal.id === activeMealId ? 'is-selected' : ''
-                                      }`}
-                                      onClick={() => handleQuickAdd(food, meal.id)}
+                                      className="row-dropdown-item"
+                                      onClick={() => handleQuickAdd(food)}
                                     >
-                                      <span>{meal.name}</span>
-                                      <span className="row-dropdown-count">
-                                        {meal.foodIds.length}
-                                      </span>
+                                      <Plus size={13} />
+                                      Criar &quot;Minha refeição&quot;
                                     </button>
-                                  ))
-                                )}
+                                  ) : (
+                                    meals.map((meal) => (
+                                      <button
+                                        key={meal.id}
+                                        type="button"
+                                        role="menuitem"
+                                        className="row-dropdown-item"
+                                        onClick={() => handleQuickAdd(food, meal.id)}
+                                      >
+                                        <span>{meal.name}</span>
+                                        <span className="row-dropdown-count">
+                                          {meal.foodIds.length}
+                                        </span>
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
