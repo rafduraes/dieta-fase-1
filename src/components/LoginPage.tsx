@@ -14,6 +14,7 @@ import {
   isSupabaseConfigured,
   supabase,
 } from '../lib/supabase';
+import { FOODS } from '../data/foods';
 import { Modal } from './Modal';
 
 type Theme = 'light' | 'dark';
@@ -26,33 +27,6 @@ interface LoginPageProps {
   recoveryMode: boolean;
   onRecoveryComplete: () => void;
 }
-
-const SLIDES = [
-  {
-    tag: 'Low Carb',
-    title: 'Dieta Fase 1',
-    meta: '343 Alimentos',
-    percent: 100,
-    captionPrefix: 'Consulte e monte seu cardápio com ',
-    captionBold: 'Guia Fase 1',
-  },
-  {
-    tag: 'Sincronizado',
-    title: 'Celular & PC',
-    meta: 'Tempo real',
-    percent: 84,
-    captionPrefix: 'Suas refeições sempre salvas entre ',
-    captionBold: 'todos os aparelhos',
-  },
-  {
-    tag: 'Regra do dia',
-    title: '1 Moderado/dia',
-    meta: 'Alerta ativo',
-    percent: 68,
-    captionPrefix: 'Foque nos 15 dias sem dúvidas com ',
-    captionBold: 'filtros rápidos',
-  },
-];
 
 function validatePasswordStrength(password: string) {
   return {
@@ -89,8 +63,6 @@ export function LoginPage({
   recoveryMode,
   onRecoveryComplete,
 }: LoginPageProps) {
-  const [slideIndex, setSlideIndex] = useState(0);
-
   // Login form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -131,8 +103,6 @@ export function LoginPage({
     () => validatePasswordStrength(newPassword),
     [newPassword]
   );
-
-  const currentSlide = SLIDES[slideIndex];
 
   async function handleLoginSubmit(e: FormEvent) {
     e.preventDefault();
@@ -308,11 +278,6 @@ export function LoginPage({
     }
   }
 
-  const circleRadius = 18;
-  const circumference = 2 * Math.PI * circleRadius;
-  const strokeDashoffset =
-    circumference - (currentSlide.percent / 100) * circumference;
-
   return (
     <div className="login-page">
       <button
@@ -433,158 +398,203 @@ export function LoginPage({
         <div className="login-right" aria-hidden="true">
           <div className="login-showcase-card">
             <div className="showcase-art">
-              {/* Calm Zen Wellness SVG Illustration inspired by Dribbble reference */}
+              {/* Line-art + sage illustration featuring sliced avocado & low-carb foods */}
               <svg
                 viewBox="0 0 320 260"
                 className="zen-svg"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                {/* Aura looping line */}
+                {/* Organic looping sage swirl behind */}
                 <path
-                  d="M72 128 C66 86, 102 52, 122 72 C136 86, 118 102, 114 82 C108 54, 152 34, 174 52 C192 66, 176 86, 166 72 C154 54, 198 42, 224 68 C244 88, 228 112, 214 96 C204 84, 248 84, 248 128"
+                  d="M64 134 C56 88, 96 52, 120 74 C134 88, 118 104, 112 84 C104 54, 154 32, 180 50 C198 64, 182 86, 170 72 C156 54, 206 42, 232 70 C252 92, 234 118, 218 100 C206 86, 256 88, 254 138"
                   stroke="#8EC38B"
                   strokeWidth="2"
                   strokeLinecap="round"
                 />
 
-                {/* Left floating badge */}
+                {/* Top-left floating food badge: sliced lemon / citrus */}
                 <circle
-                  cx="52"
+                  cx="54"
                   cy="68"
-                  r="20"
+                  r="22"
                   fill="#C8E2C5"
                   stroke="currentColor"
-                  strokeWidth="1.5"
-                />
-                <circle cx="52" cy="64" r="6" fill="#FFFFFF" stroke="currentColor" strokeWidth="1.4" />
-                <path
-                  d="M40 80 C44 73, 60 73, 64 80"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-
-                {/* Right floating badge */}
-                <circle
-                  cx="272"
-                  cy="158"
-                  r="20"
-                  fill="var(--surface)"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                />
-                <circle cx="272" cy="154" r="6" fill="#C8E2C5" stroke="currentColor" strokeWidth="1.4" />
-                <path
-                  d="M260 170 C264 163, 280 163, 284 170"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-
-                {/* Meditating figure */}
-                <path
-                  d="M142 74 C142 60, 178 60, 178 74 L182 96 C174 102, 146 102, 138 96 Z"
-                  fill="currentColor"
+                  strokeWidth="1.6"
                 />
                 <circle
-                  cx="160"
-                  cy="80"
+                  cx="54"
+                  cy="68"
                   r="13"
                   fill="var(--surface)"
                   stroke="currentColor"
-                  strokeWidth="1.8"
+                  strokeWidth="1.4"
                 />
-                {/* Closed eyes & serene smile */}
-                <path d="M153 79 Q156 81 158 79" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                <path d="M162 79 Q164 81 167 79" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                <path d="M157 85 Q160 87 163 85" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-
-                {/* Sage sweater */}
                 <path
-                  d="M132 104 C142 98, 178 98, 188 104 L216 138 L236 126 L242 135 L212 156 L190 128 L188 164 L132 164 L130 128 L108 156 L78 135 L84 126 L104 138 Z"
-                  fill="#8EC38B"
+                  d="M54 55 L54 81 M41 68 L67 68 M45 59 L63 77 M63 59 L45 77"
                   stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinejoin="round"
+                  strokeWidth="1.1"
+                  strokeLinecap="round"
                 />
+                <circle cx="54" cy="68" r="2.2" fill="#8EC38B" />
 
-                {/* Heart outline on chest */}
-                <path
-                  d="M160 144 C150 136, 145 129, 149 124 C153 120, 158 122, 160 126 C162 122, 167 120, 171 124 C175 129, 170 136, 160 144 Z"
-                  stroke="#FFFFFF"
-                  strokeWidth="2"
-                  strokeLinejoin="round"
-                />
-
-                {/* Crossed legs */}
-                <path
-                  d="M132 164 C104 166, 94 186, 114 196 C134 206, 168 196, 186 196 C206 196, 216 186, 204 172 C194 162, 176 164, 132 164 Z"
+                {/* Right floating food badge: halved boiled egg */}
+                <circle
+                  cx="268"
+                  cy="154"
+                  r="23"
                   fill="var(--surface)"
                   stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinejoin="round"
+                  strokeWidth="1.6"
                 />
                 <path
-                  d="M126 176 C144 180, 176 180, 194 176"
+                  d="M268 139 C261 139, 256 149, 256 157 C256 165, 261 169, 268 169 C275 169, 280 165, 280 157 C280 149, 275 139, 268 139 Z"
+                  fill="var(--surface)"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <circle
+                  cx="268"
+                  cy="158"
+                  r="6"
+                  fill="#8EC38B"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                />
+
+                {/* Top-right delicate herb / rosemary sprig */}
+                <path
+                  d="M236 68 Q248 52 262 44"
                   stroke="currentColor"
                   strokeWidth="1.6"
                   strokeLinecap="round"
                 />
+                <path
+                  d="M242 61 C238 53, 241 47, 246 47 C248 53, 246 58, 242 61 Z"
+                  fill="#8EC38B"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                />
+                <path
+                  d="M249 54 C256 54, 261 57, 260 62 C254 63, 250 59, 249 54 Z"
+                  fill="#C8E2C5"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                />
+                <path
+                  d="M254 49 C251 42, 254 37, 259 38 C260 43, 258 47, 254 49 Z"
+                  fill="#8EC38B"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                />
+
+                {/* Back avocado silhouette (subtle depth behind main half) */}
+                <g transform="translate(182 118) rotate(14)">
+                  <path
+                    d="M0 -44 C15 -44, 24 -22, 30 0 C37 25, 25 50, 0 50 C-25 50, -37 25, -30 0 C-24 -22, -15 -44, 0 -44 Z"
+                    fill="#C8E2C5"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinejoin="round"
+                  />
+                  {/* Stem & small leaf */}
+                  <path
+                    d="M0 -44 C1 -52, 4 -56, 8 -58"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M3 -52 C11 -60, 21 -58, 22 -50 C14 -45, 7 -47, 3 -52 Z"
+                    fill="#8EC38B"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinejoin="round"
+                  />
+                </g>
+
+                {/* Main Centerpiece: Avocado cut in half */}
+                <g transform="translate(150 132) rotate(-12)">
+                  {/* Outer skin */}
+                  <path
+                    d="M0 -58 C19 -58, 30 -30, 38 -2 C47 30, 32 62, 0 62 C-32 62, -47 30, -38 -2 C-30 -30, -19 -58, 0 -58 Z"
+                    fill="var(--surface)"
+                    stroke="currentColor"
+                    strokeWidth="2.1"
+                    strokeLinejoin="round"
+                  />
+                  {/* Creamy flesh */}
+                  <path
+                    d="M0 -50 C15 -50, 24 -26, 31 -1 C39 26, 26 54, 0 54 C-26 54, -39 26, -31 -1 C-24 -26, -15 -50, 0 -50 Z"
+                    fill="#8EC38B"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  {/* Inner lighter flesh halo */}
+                  <ellipse
+                    cx="0"
+                    cy="18"
+                    rx="23"
+                    ry="26"
+                    fill="#C8E2C5"
+                  />
+                  {/* Avocado pit / seed */}
+                  <circle
+                    cx="0"
+                    cy="20"
+                    r="16.5"
+                    fill="var(--surface)"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                  {/* Pit subtle inner fill & highlight arc */}
+                  <circle
+                    cx="0"
+                    cy="20"
+                    r="12"
+                    fill="currentColor"
+                    opacity="0.88"
+                  />
+                  <path
+                    d="M-5 13 A 8 8 0 0 1 6 14"
+                    stroke="var(--surface)"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </g>
+
+                {/* Minimalist almonds / seeds accent at bottom-right */}
+                <g transform="translate(216 206) rotate(-18)">
+                  <path
+                    d="M0 -8 C7 -5, 9 4, 0 9 C-9 4, -7 -5, 0 -8 Z"
+                    fill="#C8E2C5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </g>
+                <g transform="translate(234 214) rotate(22)">
+                  <path
+                    d="M0 -7 C6 -4, 7 3, 0 8 C-7 3, -6 -4, 0 -7 Z"
+                    fill="var(--surface)"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </g>
               </svg>
 
-              {/* Floating progress preview widget */}
+              {/* Floating static info card: Dieta Low Carb + total de alimentos */}
               <div className="floating-preview-card">
-                <div className="preview-card-top">
-                  <div className="preview-title">{currentSlide.title}</div>
-                  <div className="preview-meta">{currentSlide.meta}</div>
-                </div>
-                <div className="preview-card-bottom">
-                  <span className="preview-pill">{currentSlide.tag}</span>
-                  <div className="preview-donut">
-                    <svg width="44" height="44" viewBox="0 0 44 44">
-                      <circle
-                        cx="22"
-                        cy="22"
-                        r={circleRadius}
-                        fill="none"
-                        stroke="var(--border)"
-                        strokeWidth="4"
-                      />
-                      <circle
-                        cx="22"
-                        cy="22"
-                        r={circleRadius}
-                        fill="none"
-                        stroke="#8EC38B"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={strokeDashoffset}
-                        transform="rotate(-90 22 22)"
-                      />
-                    </svg>
-                    <span className="preview-donut-text">{currentSlide.percent}%</span>
-                  </div>
+                <div className="preview-title">Dieta Low Carb</div>
+                <div className="preview-meta">
+                  <span className="preview-sage-dot" />
+                  <span>{FOODS.length} alimentos</span>
                 </div>
               </div>
             </div>
 
-            <div className="showcase-dots">
-              {SLIDES.map((s, idx) => (
-                <button
-                  key={s.title}
-                  type="button"
-                  className={`showcase-dot ${idx === slideIndex ? 'active' : ''}`}
-                  onClick={() => setSlideIndex(idx)}
-                  tabIndex={-1}
-                />
-              ))}
-            </div>
-
             <p className="showcase-tagline">
-              {currentSlide.captionPrefix}
-              <strong>{currentSlide.captionBold}</strong>
+              Organize suas refeições de forma leve com o <strong>Guia Fase 1</strong>
             </p>
           </div>
         </div>
