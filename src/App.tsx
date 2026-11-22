@@ -76,12 +76,19 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('tabela');
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    const root = document.documentElement;
+    root.classList.add('no-theme-transitions');
+    root.setAttribute('data-theme', theme);
+    void root.offsetHeight;
+    const raf = requestAnimationFrame(() => {
+      root.classList.remove('no-theme-transitions');
+    });
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch {
       // Ignore storage errors
     }
+    return () => cancelAnimationFrame(raf);
   }, [theme]);
 
   // Table tab filters

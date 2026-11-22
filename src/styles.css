@@ -54,6 +54,13 @@
   color-scheme: dark;
 }
 
+.no-theme-transitions,
+.no-theme-transitions *,
+.no-theme-transitions *::before,
+.no-theme-transitions *::after {
+  transition: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -966,6 +973,8 @@ select {
   padding: 0 8px;
   border-radius: 6px;
   border: 1px solid var(--text);
+  background: var(--bg);
+  color: var(--text);
   font-size: 15px;
   font-weight: 600;
   font-family: var(--font-display);
