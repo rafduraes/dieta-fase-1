@@ -316,15 +316,18 @@ export function LoginPage({
 
   return (
     <div className="login-page">
-      <button
-        type="button"
-        className="theme-toggle login-theme-btn"
-        onClick={onToggleTheme}
-        aria-label={theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
-        title={theme === 'light' ? 'Modo escuro' : 'Modo claro'}
-      >
-        {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-      </button>
+      <div className="login-topbar">
+        <span className="login-topbar-brand">Guia Fase 1 • 15 dias</span>
+        <button
+          type="button"
+          className="theme-toggle login-theme-btn"
+          onClick={onToggleTheme}
+          aria-label={theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
+          title={theme === 'light' ? 'Modo escuro' : 'Modo claro'}
+        >
+          {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+        </button>
+      </div>
 
       <div className="login-split">
         <div className="login-left">

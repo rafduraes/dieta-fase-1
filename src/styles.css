@@ -1381,6 +1381,16 @@ select {
   background: var(--surface);
   position: relative;
   display: flex;
+  flex-direction: column;
+}
+
+.login-topbar-brand {
+  display: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
 }
 
 .login-theme-btn {
@@ -1850,12 +1860,68 @@ select {
 }
 
 @media (max-width: 900px) {
+  .login-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 0;
+  }
+
+  .login-topbar-brand {
+    display: inline-block;
+  }
+
+  .login-theme-btn {
+    position: static;
+    width: 36px;
+    height: 36px;
+  }
+
   .login-split {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    min-height: auto;
   }
 
   .login-right {
+    order: -1;
+    padding: 12px 16px 0;
+  }
+
+  .login-showcase-card {
+    padding: 14px 18px;
+    border-radius: 18px;
+    gap: 0;
+  }
+
+  .showcase-art {
+    max-width: 100%;
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .zen-svg {
+    width: 128px;
+    max-width: 128px;
+    flex-shrink: 0;
+  }
+
+  .floating-preview-card {
+    position: static;
+    flex: 1;
+    min-width: 0;
+    box-shadow: var(--shadow-sm);
+    padding: 12px 14px;
+  }
+
+  .showcase-tagline {
     display: none;
+  }
+
+  .login-left {
+    padding: 26px 20px 36px;
   }
 }
 
@@ -1870,7 +1936,11 @@ select {
   }
 
   .login-left {
-    padding: 36px 18px;
+    padding: 22px 18px 32px;
+  }
+
+  .login-subtitle {
+    margin: 8px 0 20px;
   }
 
   .pill-input {
