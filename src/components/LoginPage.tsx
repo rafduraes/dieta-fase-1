@@ -28,12 +28,44 @@ interface LoginPageProps {
   onRecoveryComplete: () => void;
 }
 
-function validatePasswordStrength(password: string) {
+interface PasswordStrength {
+  minLength: boolean;
+  hasLower: boolean;
+  hasUpper: boolean;
+  hasNumber: boolean;
+}
+
+function validatePasswordStrength(password: string): PasswordStrength {
   return {
     minLength: password.length >= 8,
-    hasLetter: /[A-Za-z]/.test(password),
+    hasLower: /[a-z]/.test(password),
+    hasUpper: /[A-Z]/.test(password),
     hasNumber: /\d/.test(password),
   };
+}
+
+function isPasswordStrong(strength: PasswordStrength): boolean {
+  return (
+    strength.minLength &&
+    strength.hasLower &&
+    strength.hasUpper &&
+    strength.hasNumber
+  );
+}
+
+function PasswordRulesList({ strength }: { strength: PasswordStrength }) {
+  return (
+    <ul className="password-rules" aria-label="Requisitos de senha">
+      <li className={strength.minLength ? 'ok' : ''}>Mínimo de 8 caracteres</li>
+      <li className={strength.hasLower ? 'ok' : ''}>
+        Pelo menos 1 letra minúscula
+      </li>
+      <li className={strength.hasUpper ? 'ok' : ''}>
+        Pelo menos 1 letra maiúscula
+      </li>
+      <li className={strength.hasNumber ? 'ok' : ''}>Pelo menos 1 número</li>
+    </ul>
+  );
 }
 
 function mapAuthError(message: string): string {
@@ -50,8 +82,12 @@ function mapAuthError(message: string): string {
   if (lower.includes('rate limit') || lower.includes('too many requests')) {
     return 'Muitas tentativas seguidas. Aguarde um instante e tente novamente.';
   }
-  if (lower.includes('password should be at least')) {
-    return 'A senha precisa ter pelo menos 8 caracteres.';
+  if (
+    lower.includes('password should be at least') ||
+    lower.includes('weak') ||
+    lower.includes('character of each')
+  ) {
+    return 'A senha precisa ter pelo menos 8 caracteres, incluindo minúscula, maiúscula e número.';
   }
   return message;
 }
@@ -170,8 +206,10 @@ export function LoginPage({
       setRegError('Informe um e-mail válido.');
       return;
     }
-    if (!regStrength.minLength || !regStrength.hasLetter || !regStrength.hasNumber) {
-      setRegError('Use pelo menos 8 caracteres com letras e números.');
+    if (!isPasswordStrong(regStrength)) {
+      setRegError(
+        'A senha precisa ter 8+ caracteres com letra minúscula, maiúscula e número.'
+      );
       return;
     }
     if (regPassword !== regConfirm) {
@@ -248,12 +286,10 @@ export function LoginPage({
 
     if (!supabase) return;
 
-    if (
-      !resetStrength.minLength ||
-      !resetStrength.hasLetter ||
-      !resetStrength.hasNumber
-    ) {
-      setResetError('Use pelo menos 8 caracteres com letras e números.');
+    if (!isPasswordStrong(resetStrength)) {
+      setResetError(
+        'A senha precisa ter 8+ caracteres com letra minúscula, maiúscula e número.'
+      );
       return;
     }
     if (newPassword !== confirmNewPassword) {
@@ -658,17 +694,7 @@ export function LoginPage({
               onChange={(e) => setRegConfirm(e.target.value)}
             />
 
-            <ul className="password-rules" aria-label="Requisitos de senha">
-              <li className={regStrength.minLength ? 'ok' : ''}>
-                Mínimo de 8 caracteres
-              </li>
-              <li className={regStrength.hasLetter ? 'ok' : ''}>
-                Pelo menos 1 letra
-              </li>
-              <li className={regStrength.hasNumber ? 'ok' : ''}>
-                Pelo menos 1 número
-              </li>
-            </ul>
+            <PasswordRulesList strength={regStrength} />
 
             {regError && (
               <div className="form-feedback error" role="alert">
@@ -789,17 +815,7 @@ export function LoginPage({
             onChange={(e) => setConfirmNewPassword(e.target.value)}
           />
 
-          <ul className="password-rules" aria-label="Requisitos de senha">
-            <li className={resetStrength.minLength ? 'ok' : ''}>
-              Mínimo de 8 caracteres
-            </li>
-            <li className={resetStrength.hasLetter ? 'ok' : ''}>
-              Pelo menos 1 letra
-            </li>
-            <li className={resetStrength.hasNumber ? 'ok' : ''}>
-              Pelo menos 1 número
-            </li>
-          </ul>
+          <PasswordRulesList strength={resetStrength} />
 
           {resetError && (
             <div className="form-feedback error" role="alert">
