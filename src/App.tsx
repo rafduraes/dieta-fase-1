@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
   Copy,
   GripVertical,
   ListFilter,
@@ -45,18 +46,37 @@ function loadMeals(): Meal[] {
   return DEFAULT_MEALS;
 }
 
+function getRecDotClass(rec: Recommendation): string {
+  if (rec === 'Permitido') return 'dot-green';
+  if (rec === 'Moderado') return 'dot-amber';
+  return 'dot-red';
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('tabela');
-  const [search, setSearch] = useState('');
-  const [recFilter, setRecFilter] = useState<RecommendationFilter>('Todos');
-  const [categoryFilter, setCategoryFilter] = useState<string>('Todas');
 
+  // Table tab filters
+  const [tableSearch, setTableSearch] = useState('');
+  const [tableRecFilter, setTableRecFilter] = useState<RecommendationFilter>('Todos');
+  const [tableCategoryFilter, setTableCategoryFilter] = useState<string>('Todas');
+
+  // Meal builder tab filters
+  const [builderSearch, setBuilderSearch] = useState('');
+  const [builderRecFilter, setBuilderRecFilter] = useState<RecommendationFilter>('Todos');
+  const [builderCategoryFilter, setBuilderCategoryFilter] = useState<string>('Todas');
+
+  // Meals state
   const [meals, setMeals] = useState<Meal[]>(loadMeals);
   const [activeMealId, setActiveMealId] = useState<string>(() => loadMeals()[0]?.id ?? '');
   const [newMealName, setNewMealName] = useState('');
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
   const [editingMealName, setEditingMealName] = useState('');
   const [dragOverMealId, setDragOverMealId] = useState<string | null>(null);
+
+  // Per-row meal dropdown in table
+  const [openRowDropdownId, setOpenRowDropdownId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -72,6 +92,24 @@ export default function App() {
     const timer = setTimeout(() => setToast(null), 2400);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!openRowDropdownId) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenRowDropdownId(null);
+      }
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpenRowDropdownId(null);
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [openRowDropdownId]);
 
   const foodMap = useMemo(() => {
     const map = new Map<string, FoodItem>();
@@ -89,18 +127,27 @@ export default function App() {
     return counts;
   }, []);
 
-  const filteredFoods = useMemo(() => {
-    const query = normalizeText(search.trim());
+  const tableFoods = useMemo(() => {
+    const query = normalizeText(tableSearch.trim());
     return FOODS.filter((food) => {
-      if (recFilter !== 'Todos' && food.recommendation !== recFilter) return false;
-      if (categoryFilter !== 'Todas' && food.category !== categoryFilter) return false;
+      if (tableRecFilter !== 'Todos' && food.recommendation !== tableRecFilter) return false;
+      if (tableCategoryFilter !== 'Todas' && food.category !== tableCategoryFilter) return false;
       if (!query) return true;
-      const haystack = normalizeText(
-        `${food.name} ${food.category} ${food.notes ?? ''}`
-      );
+      const haystack = normalizeText(`${food.name} ${food.category} ${food.notes ?? ''}`);
       return haystack.includes(query);
     });
-  }, [search, recFilter, categoryFilter]);
+  }, [tableSearch, tableRecFilter, tableCategoryFilter]);
+
+  const builderFoods = useMemo(() => {
+    const query = normalizeText(builderSearch.trim());
+    return FOODS.filter((food) => {
+      if (builderRecFilter !== 'Todos' && food.recommendation !== builderRecFilter) return false;
+      if (builderCategoryFilter !== 'Todas' && food.category !== builderCategoryFilter) return false;
+      if (!query) return true;
+      const haystack = normalizeText(`${food.name} ${food.category} ${food.notes ?? ''}`);
+      return haystack.includes(query);
+    });
+  }, [builderSearch, builderRecFilter, builderCategoryFilter]);
 
   const dayStats = useMemo(() => {
     let totalItems = 0;
@@ -171,6 +218,7 @@ export default function App() {
         m.id === mealId ? { ...m, foodIds: [...m.foodIds, foodId] } : m
       )
     );
+    setActiveMealId(mealId);
     showToast(`${food.name} adicionado em "${targetMeal.name}"`);
   }
 
@@ -184,18 +232,22 @@ export default function App() {
     );
   }
 
-  function handleQuickAddFromTable(food: FoodItem) {
+  function handleQuickAdd(food: FoodItem, specificMealId?: string) {
     if (meals.length === 0) {
       const id = `meal-${Date.now()}`;
       setMeals([{ id, name: 'Minha refeição', foodIds: [food.id] }]);
       setActiveMealId(id);
+      setOpenRowDropdownId(null);
       showToast(`${food.name} adicionado em "Minha refeição"`);
       return;
     }
-    const targetId = meals.some((m) => m.id === activeMealId)
-      ? activeMealId
-      : meals[0].id;
+
+    const targetId =
+      specificMealId ??
+      (meals.some((m) => m.id === activeMealId) ? activeMealId : meals[0].id);
+
     addFoodToMeal(targetId, food.id);
+    setOpenRowDropdownId(null);
   }
 
   async function handleCopySummary() {
@@ -236,7 +288,7 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <span className="brand-eyebrow">Dieta Fase 1 • 15 Dias</span>
+          <p className="brand-eyebrow">Dieta Fase 1 • 15 dias</p>
           <h1 className="app-title">Guia de Alimentos & Refeições</h1>
           <p className="app-subtitle">
             Baseado na tabela de Teco Mendes Nutricionista ({FOODS.length} alimentos)
@@ -267,166 +319,295 @@ export default function App() {
 
       <section className="rules-strip" aria-label="Regras da Fase 1">
         <div className="rule-card">
-          <span className="rule-dot green" />
+          <span className="rule-dot dot-green" />
           <span>
             <strong>Permitido:</strong> Consumo livre, em qualquer horário do dia
           </span>
         </div>
         <div className="rule-card">
-          <span className="rule-dot amber" />
+          <span className="rule-dot dot-amber" />
           <span>
             <strong>Moderado:</strong> Escolher apenas 1 opção e consumir uma vez no dia
           </span>
         </div>
         <div className="rule-card">
-          <span className="rule-dot red" />
+          <span className="rule-dot dot-red" />
           <span>
             <strong>Não permitido:</strong> Evitar durante os 15 dias da Fase 1
           </span>
         </div>
       </section>
 
-      <section className="filters-card" aria-label="Filtros">
-        <div className="filters-top">
-          <div className="search-wrap">
-            <Search size={16} className="search-icon" />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Buscar alimento ou observação (ex: queijo, café, açúcar)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button
-                type="button"
-                className="clear-btn"
-                onClick={() => setSearch('')}
-                aria-label="Limpar busca"
-              >
-                <X size={15} />
-              </button>
-            )}
-          </div>
-
-          <div className="select-wrap">
-            <select
-              className="category-select"
-              aria-label="Filtrar por descrição"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <option value="Todas">Todas as descrições ({CATEGORIES.length})</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="rec-pills">
-          <div className="pill-group" role="group" aria-label="Filtrar por recomendação">
-            {(
-              [
-                ['Todos', FOODS.length],
-                ['Permitido', countsByRec.Permitido],
-                ['Moderado', countsByRec.Moderado],
-                ['Não permitido', countsByRec['Não permitido']],
-              ] as const
-            ).map(([label, count]) => (
-              <button
-                key={label}
-                type="button"
-                className={`rec-pill ${
-                  recFilter === label
-                    ? label === 'Todos'
-                      ? 'active-all'
-                      : `active-${label}`
-                    : ''
-                }`}
-                onClick={() => setRecFilter(label)}
-              >
-                {label} ({count})
-              </button>
-            ))}
-          </div>
-
-          <span className="results-meta">
-            Mostrando <strong>{filteredFoods.length}</strong> de {FOODS.length} itens
-          </span>
-        </div>
-      </section>
-
       {activeTab === 'tabela' ? (
-        <section className="table-card">
-          {filteredFoods.length === 0 ? (
-            <div className="empty-state">
-              Nenhum alimento encontrado com esses filtros.
+        <>
+          <section className="filters-card" aria-label="Filtros da tabela">
+            <div className="filters-top">
+              <div className="search-wrap">
+                <Search size={16} className="search-icon" />
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Buscar alimento ou observação (ex: queijo, café, açúcar)..."
+                  value={tableSearch}
+                  onChange={(e) => setTableSearch(e.target.value)}
+                />
+                {tableSearch && (
+                  <button
+                    type="button"
+                    className="clear-btn"
+                    onClick={() => setTableSearch('')}
+                    aria-label="Limpar busca"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+
+              <div className="select-wrap">
+                <select
+                  className="category-select"
+                  aria-label="Filtrar por descrição"
+                  value={tableCategoryFilter}
+                  onChange={(e) => setTableCategoryFilter(e.target.value)}
+                >
+                  <option value="Todas">Todas as descrições ({CATEGORIES.length})</option>
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          ) : (
-            <table className="food-table">
-              <thead>
-                <tr>
-                  <th>Alimento</th>
-                  <th>Recomendação</th>
-                  <th>Descrição</th>
-                  <th>Observações</th>
-                  <th style={{ width: '1%' }}>Refeição</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredFoods.map((food) => (
-                  <tr key={food.id}>
-                    <td className="food-name">{food.name}</td>
-                    <td>
-                      <span className={`badge badge-${food.recommendation}`}>
-                        {food.recommendation}
-                      </span>
-                    </td>
-                    <td className="food-category">{food.category}</td>
-                    <td className="food-notes">{food.notes ?? '—'}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="quick-add-btn"
-                        onClick={() => handleQuickAddFromTable(food)}
-                        title={
-                          activeMealName
-                            ? `Adicionar em ${activeMealName}`
-                            : 'Criar refeição e adicionar'
-                        }
-                      >
-                        <Plus size={14} />
-                        {activeMealName ? activeMealName : 'Adicionar'}
-                      </button>
-                    </td>
-                  </tr>
+
+            <div className="rec-bar">
+              <div className="segmented" role="group" aria-label="Filtrar por recomendação">
+                {(
+                  [
+                    ['Todos', FOODS.length, null],
+                    ['Permitido', countsByRec.Permitido, 'dot-green'],
+                    ['Moderado', countsByRec.Moderado, 'dot-amber'],
+                    ['Não permitido', countsByRec['Não permitido'], 'dot-red'],
+                  ] as const
+                ).map(([label, count, dotClass]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className={`seg-btn ${tableRecFilter === label ? 'active' : ''}`}
+                    onClick={() => setTableRecFilter(label)}
+                  >
+                    {dotClass && <span className={`rule-dot ${dotClass}`} />}
+                    <span>{label}</span>
+                    <span className="seg-count">{count}</span>
+                  </button>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </section>
+              </div>
+
+              <div className="table-target-meal">
+                <label htmlFor="target-meal-select" className="target-meal-label">
+                  Refeição padrão:
+                </label>
+                <select
+                  id="target-meal-select"
+                  className="target-meal-select"
+                  value={activeMealId}
+                  onChange={(e) => setActiveMealId(e.target.value)}
+                  disabled={meals.length === 0}
+                >
+                  {meals.length === 0 ? (
+                    <option value="">Nenhuma refeição</option>
+                  ) : (
+                    meals.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <span className="results-meta">
+                  <strong>{tableFoods.length}</strong> de {FOODS.length}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section className="table-card">
+            {tableFoods.length === 0 ? (
+              <div className="empty-state">
+                Nenhum alimento encontrado com esses filtros.
+              </div>
+            ) : (
+              <table className="food-table">
+                <thead>
+                  <tr>
+                    <th>Alimento</th>
+                    <th>Recomendação</th>
+                    <th>Descrição</th>
+                    <th>Observações</th>
+                    <th style={{ width: '1%' }}>Refeição</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableFoods.map((food) => {
+                    const isDropdownOpen = openRowDropdownId === food.id;
+                    return (
+                      <tr key={food.id}>
+                        <td className="food-name">{food.name}</td>
+                        <td>
+                          <span className={`rec-text rec-${food.recommendation}`}>
+                            <span
+                              className={`rule-dot ${getRecDotClass(food.recommendation)}`}
+                            />
+                            {food.recommendation}
+                          </span>
+                        </td>
+                        <td className="food-category">{food.category}</td>
+                        <td className="food-notes">{food.notes ?? '—'}</td>
+                        <td>
+                          <div
+                            className="split-action"
+                            ref={isDropdownOpen ? dropdownRef : undefined}
+                          >
+                            <button
+                              type="button"
+                              className="split-main"
+                              onClick={() => handleQuickAdd(food)}
+                              title={
+                                activeMealName
+                                  ? `Adicionar em ${activeMealName}`
+                                  : 'Criar refeição e adicionar'
+                              }
+                            >
+                              <Plus size={14} />
+                              <span>{activeMealName ?? 'Adicionar'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="split-toggle"
+                              aria-label={`Escolher refeição para ${food.name}`}
+                              aria-expanded={isDropdownOpen}
+                              onClick={() =>
+                                setOpenRowDropdownId(isDropdownOpen ? null : food.id)
+                              }
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+
+                            {isDropdownOpen && (
+                              <div className="row-dropdown" role="menu">
+                                <div className="row-dropdown-header">Adicionar em:</div>
+                                {meals.length === 0 ? (
+                                  <button
+                                    type="button"
+                                    className="row-dropdown-item"
+                                    onClick={() => handleQuickAdd(food)}
+                                  >
+                                    <Plus size={13} />
+                                    Criar &quot;Minha refeição&quot;
+                                  </button>
+                                ) : (
+                                  meals.map((meal) => (
+                                    <button
+                                      key={meal.id}
+                                      type="button"
+                                      role="menuitem"
+                                      className={`row-dropdown-item ${
+                                        meal.id === activeMealId ? 'is-selected' : ''
+                                      }`}
+                                      onClick={() => handleQuickAdd(food, meal.id)}
+                                    >
+                                      <span>{meal.name}</span>
+                                      <span className="row-dropdown-count">
+                                        {meal.foodIds.length}
+                                      </span>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </section>
+        </>
       ) : (
         <section className="builder-layout">
           <aside className="ingredients-panel">
             <div className="panel-header">
               <h2 className="panel-title">Ingredientes</h2>
-              <span className="results-meta">{filteredFoods.length} itens</span>
+              <span className="results-meta">{builderFoods.length} itens</span>
             </div>
+
+            <div className="search-wrap">
+              <Search size={15} className="search-icon" />
+              <input
+                type="text"
+                className="search-input compact"
+                placeholder="Buscar ingrediente..."
+                value={builderSearch}
+                onChange={(e) => setBuilderSearch(e.target.value)}
+              />
+              {builderSearch && (
+                <button
+                  type="button"
+                  className="clear-btn"
+                  onClick={() => setBuilderSearch('')}
+                  aria-label="Limpar busca de ingrediente"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="builder-subfilters">
+              <select
+                className="compact-select"
+                aria-label="Filtrar ingredientes por recomendação"
+                value={builderRecFilter}
+                onChange={(e) =>
+                  setBuilderRecFilter(e.target.value as RecommendationFilter)
+                }
+              >
+                <option value="Todos">Todas recomendações</option>
+                <option value="Permitido">Permitido ({countsByRec.Permitido})</option>
+                <option value="Moderado">Moderado ({countsByRec.Moderado})</option>
+                <option value="Não permitido">
+                  Não permitido ({countsByRec['Não permitido']})
+                </option>
+              </select>
+
+              <select
+                className="compact-select"
+                aria-label="Filtrar ingredientes por descrição"
+                value={builderCategoryFilter}
+                onChange={(e) => setBuilderCategoryFilter(e.target.value)}
+              >
+                <option value="Todas">Todas descrições</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <p className="panel-hint">
-              Arraste um ingrediente para uma refeição ao lado ou clique no <strong>+</strong> para adicionar em{' '}
+              Arraste para uma refeição ou clique no <strong>+</strong> para adicionar em{' '}
               <strong>{activeMealName ?? 'uma refeição'}</strong>.
             </p>
 
             <div className="ingredients-list">
-              {filteredFoods.length === 0 ? (
+              {builderFoods.length === 0 ? (
                 <div className="empty-state" style={{ padding: '24px 8px' }}>
                   Nenhum ingrediente encontrado.
                 </div>
               ) : (
-                filteredFoods.map((food) => (
+                builderFoods.map((food) => (
                   <div
                     key={food.id}
                     className="draggable-item"
@@ -439,20 +620,22 @@ export default function App() {
                         <div className="draggable-name" title={food.name}>
                           {food.name}
                         </div>
-                        <div className="draggable-cat">{food.category}</div>
+                        <div className="draggable-meta">
+                          <span
+                            className={`rule-dot ${getRecDotClass(food.recommendation)}`}
+                          />
+                          <span>{food.recommendation}</span>
+                          <span className="meta-sep">•</span>
+                          <span>{food.category}</span>
+                        </div>
                       </div>
                     </div>
 
                     <div className="draggable-actions">
-                      <span className={`badge badge-${food.recommendation}`}>
-                        {food.recommendation === 'Não permitido'
-                          ? 'Evitar'
-                          : food.recommendation}
-                      </span>
                       <button
                         type="button"
                         className="icon-btn add"
-                        onClick={() => handleQuickAddFromTable(food)}
+                        onClick={() => handleQuickAdd(food)}
                         title={`Adicionar em ${activeMealName ?? 'refeição'}`}
                         aria-label={`Adicionar ${food.name}`}
                       >
@@ -489,14 +672,14 @@ export default function App() {
                   </span>
 
                   {dayStats.moderateCount > 1 && (
-                    <span className="alert-pill amber">
+                    <span className="inline-alert amber">
                       <AlertTriangle size={14} />
                       {dayStats.moderateCount} itens moderados hoje (limite: 1/dia)
                     </span>
                   )}
 
                   {dayStats.forbiddenCount > 0 && (
-                    <span className="alert-pill red">
+                    <span className="inline-alert red">
                       <AlertTriangle size={14} />
                       {dayStats.forbiddenCount}{' '}
                       {dayStats.forbiddenCount === 1
@@ -627,7 +810,14 @@ export default function App() {
                                 <div className="meal-food-info">
                                   <div className="meal-food-name">{food.name}</div>
                                   <div className="meal-food-sub">
-                                    {food.recommendation} • {food.category}
+                                    <span
+                                      className={`rule-dot ${getRecDotClass(
+                                        food.recommendation
+                                      )}`}
+                                    />
+                                    <span>{food.recommendation}</span>
+                                    <span className="meta-sep">•</span>
+                                    <span>{food.category}</span>
                                   </div>
                                 </div>
                                 <button
