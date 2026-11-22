@@ -198,6 +198,12 @@ select {
 
 .search-wrap {
   position: relative;
+  width: 100%;
+  flex: none;
+}
+
+.filters-top .search-wrap {
+  width: auto;
   flex: 1 1 260px;
 }
 
@@ -586,7 +592,7 @@ select {
 
 .builder-subfilters {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -689,9 +695,14 @@ select {
   transition: all 0.14s ease;
 }
 
-.icon-btn:hover {
+.icon-btn:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--border-strong);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .icon-btn.add:hover {
@@ -837,11 +848,15 @@ select {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
 }
 
 .meal-card.is-active {
   border-color: var(--text);
+}
+
+.meal-card.is-dragging {
+  opacity: 0.5;
 }
 
 .meal-card.is-drag-over {
@@ -856,6 +871,16 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  cursor: grab;
+}
+
+.meal-card-header:active {
+  cursor: grabbing;
+}
+
+.meal-drag-icon {
+  color: var(--text-soft);
+  flex-shrink: 0;
 }
 
 .meal-title-wrap {

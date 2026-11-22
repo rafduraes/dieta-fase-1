@@ -3,6 +3,8 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   GripVertical,
   ListFilter,
@@ -72,6 +74,7 @@ export default function App() {
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
   const [editingMealName, setEditingMealName] = useState('');
   const [dragOverMealId, setDragOverMealId] = useState<string | null>(null);
+  const [draggingMealId, setDraggingMealId] = useState<string | null>(null);
 
   // Per-row meal dropdown in table
   const [openRowDropdownId, setOpenRowDropdownId] = useState<string | null>(null);
@@ -268,14 +271,60 @@ export default function App() {
   }
 
   function handleDragStart(e: React.DragEvent, foodId: string) {
+    setDraggingMealId(null);
+    e.dataTransfer.setData('application/x-food-id', foodId);
     e.dataTransfer.setData('text/plain', foodId);
     e.dataTransfer.effectAllowed = 'copy';
+  }
+
+  function moveMeal(mealId: string, direction: -1 | 1) {
+    setMeals((prev) => {
+      const index = prev.findIndex((m) => m.id === mealId);
+      const targetIndex = index + direction;
+      if (index === -1 || targetIndex < 0 || targetIndex >= prev.length) {
+        return prev;
+      }
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  }
+
+  function reorderMeals(fromId: string, toId: string) {
+    if (fromId === toId) return;
+    setMeals((prev) => {
+      const fromIndex = prev.findIndex((m) => m.id === fromId);
+      const toIndex = prev.findIndex((m) => m.id === toId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }
+
+  function handleMealDragStart(e: React.DragEvent, mealId: string) {
+    setDraggingMealId(mealId);
+    e.dataTransfer.setData('application/x-meal-id', mealId);
+    e.dataTransfer.effectAllowed = 'move';
   }
 
   function handleDropOnMeal(e: React.DragEvent, mealId: string) {
     e.preventDefault();
     setDragOverMealId(null);
-    const foodId = e.dataTransfer.getData('text/plain');
+
+    const draggedMeal =
+      draggingMealId || e.dataTransfer.getData('application/x-meal-id');
+    if (draggedMeal) {
+      reorderMeals(draggedMeal, mealId);
+      setDraggingMealId(null);
+      return;
+    }
+
+    const foodId =
+      e.dataTransfer.getData('application/x-food-id') ||
+      e.dataTransfer.getData('text/plain');
     if (foodId) {
       addFoodToMeal(mealId, foodId);
     }
@@ -706,20 +755,27 @@ export default function App() {
               </div>
             ) : (
               <div className="meals-grid">
-                {meals.map((meal) => {
+                {meals.map((meal, mealIndex) => {
                   const isActive = meal.id === activeMealId;
                   const isDragOver = dragOverMealId === meal.id;
+                  const isDragging = draggingMealId === meal.id;
 
                   return (
                     <div
                       key={meal.id}
                       className={`meal-card ${isActive ? 'is-active' : ''} ${
                         isDragOver ? 'is-drag-over' : ''
-                      }`}
+                      } ${isDragging ? 'is-dragging' : ''}`}
+                      draggable={editingMealId !== meal.id}
+                      onDragStart={(e) => handleMealDragStart(e, meal.id)}
+                      onDragEnd={() => {
+                        setDraggingMealId(null);
+                        setDragOverMealId(null);
+                      }}
                       onClick={() => setActiveMealId(meal.id)}
                       onDragOver={(e) => {
                         e.preventDefault();
-                        e.dataTransfer.dropEffect = 'copy';
+                        e.dataTransfer.dropEffect = draggingMealId ? 'move' : 'copy';
                         if (dragOverMealId !== meal.id) setDragOverMealId(meal.id);
                       }}
                       onDragLeave={() => {
@@ -729,6 +785,11 @@ export default function App() {
                     >
                       <div className="meal-card-header">
                         <div className="meal-title-wrap">
+                          <GripVertical
+                            size={15}
+                            className="meal-drag-icon"
+                            aria-hidden="true"
+                          />
                           {editingMealId === meal.id ? (
                             <input
                               type="text"
@@ -746,7 +807,7 @@ export default function App() {
                             <h3
                               className="meal-title"
                               onDoubleClick={() => startRenameMeal(meal)}
-                              title="Clique duas vezes para renomear"
+                              title="Clique duas vezes para renomear ou arraste para reordenar"
                             >
                               {meal.name}
                             </h3>
@@ -754,6 +815,32 @@ export default function App() {
                         </div>
 
                         <div className="draggable-actions">
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            disabled={mealIndex === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveMeal(meal.id, -1);
+                            }}
+                            aria-label="Mover refeição para antes"
+                            title="Mover para antes"
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            disabled={mealIndex === meals.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveMeal(meal.id, 1);
+                            }}
+                            aria-label="Mover refeição para depois"
+                            title="Mover para depois"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
                           {editingMealId === meal.id ? (
                             <button
                               type="button"
