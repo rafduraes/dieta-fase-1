@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/data/foods.ts"],"version":"5.6.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/loginpage.tsx","./src/components/modal.tsx","./src/data/foods.ts","./src/lib/supabase.ts"],"version":"5.6.3"}

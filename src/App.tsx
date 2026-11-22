@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Session } from '@supabase/supabase-js';
 import {
   AlertTriangle,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Cloud,
+  CloudOff,
   Copy,
   GripVertical,
   ListFilter,
+  Loader2,
+  LogOut,
   Moon,
   Pencil,
   Plus,
@@ -17,15 +22,20 @@ import {
   UtensilsCrossed,
   X,
 } from 'lucide-react';
+import { LoginPage } from './components/LoginPage';
+import { Modal } from './components/Modal';
 import { CATEGORIES, FOODS } from './data/foods';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { FoodItem, Meal, Recommendation } from './types';
 
 type ActiveTab = 'tabela' | 'refeicoes';
 type RecommendationFilter = 'Todos' | Recommendation;
 type Theme = 'light' | 'dark';
+type SyncStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 const STORAGE_KEY = 'dieta-fase1-meals-v1';
 const THEME_STORAGE_KEY = 'dieta-fase1-theme-v1';
+const MIGRATED_PREFIX = 'dieta-fase1-migrated-v1:';
 
 function loadTheme(): Theme {
   try {
@@ -71,9 +81,74 @@ function getRecDotClass(rec: Recommendation): string {
   return 'dot-red';
 }
 
+function sanitizeMeals(raw: unknown): Meal[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (item): item is Meal =>
+        Boolean(item) &&
+        typeof item === 'object' &&
+        typeof (item as Meal).id === 'string' &&
+        typeof (item as Meal).name === 'string' &&
+        Array.isArray((item as Meal).foodIds)
+    )
+    .map((m) => ({
+      id: m.id,
+      name: m.name,
+      foodIds: m.foodIds.filter((id): id is string => typeof id === 'string'),
+    }));
+}
+
+function countMealItems(list: Meal[]): number {
+  return list.reduce((sum, meal) => sum + meal.foodIds.length, 0);
+}
+
+function hasMeaningfulMeals(list: Meal[]): boolean {
+  if (countMealItems(list) > 0) return true;
+  if (list.length !== DEFAULT_MEALS.length) return true;
+  return list.some((meal, idx) => meal.name !== DEFAULT_MEALS[idx]?.name);
+}
+
+function mergeMealLists(cloudMeals: Meal[], localMeals: Meal[]): Meal[] {
+  const result = cloudMeals.map((m) => ({ ...m, foodIds: [...m.foodIds] }));
+
+  for (const localMeal of localMeals) {
+    const normalizedLocalName = normalizeText(localMeal.name.trim());
+    const existing = result.find(
+      (m) =>
+        m.id === localMeal.id ||
+        normalizeText(m.name.trim()) === normalizedLocalName
+    );
+
+    if (existing) {
+      for (const foodId of localMeal.foodIds) {
+        if (!existing.foodIds.includes(foodId)) {
+          existing.foodIds.push(foodId);
+        }
+      }
+    } else if (localMeal.foodIds.length > 0 || !DEFAULT_MEALS.some((d) => d.id === localMeal.id)) {
+      result.push({ ...localMeal, foodIds: [...localMeal.foodIds] });
+    }
+  }
+
+  return result;
+}
+
 export default function App() {
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [activeTab, setActiveTab] = useState<ActiveTab>('tabela');
+
+  // Auth & sync state
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(isSupabaseConfigured);
+  const [recoveryMode, setRecoveryMode] = useState<boolean>(false);
+  const [cloudReady, setCloudReady] = useState<boolean>(!isSupabaseConfigured);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [migrationPrompt, setMigrationPrompt] = useState<{
+    cloudMeals: Meal[];
+    localMeals: Meal[];
+  } | null>(null);
+  const skipNextCloudSaveRef = useRef<boolean>(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -116,13 +191,234 @@ export default function App() {
 
   const [toast, setToast] = useState<string | null>(null);
 
+  const persistMealsToCloud = useCallback(
+    async (userId: string, nextMeals: Meal[]) => {
+      if (!supabase) return;
+      setSyncStatus('saving');
+      const { error } = await supabase.from('user_meal_plans').upsert(
+        {
+          user_id: userId,
+          meals: nextMeals,
+        },
+        { onConflict: 'user_id' }
+      );
+      if (error) {
+        setSyncStatus('error');
+        return;
+      }
+      setSyncStatus('saved');
+    },
+    []
+  );
+
+  // Initialize Supabase session & listen to auth events (including PKCE recovery)
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setAuthLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    const url = new URL(window.location.href);
+    const hasAuthParams =
+      url.searchParams.has('code') ||
+      window.location.hash.includes('type=recovery') ||
+      window.location.hash.includes('access_token=');
+
+    if (window.location.hash.includes('type=recovery')) {
+      setRecoveryMode(true);
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data.session ?? null);
+      setAuthLoading(false);
+      if (hasAuthParams) {
+        window.history.replaceState({}, '', `${url.origin}${url.pathname}`);
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, nextSession) => {
+        if (!mounted) return;
+        setSession(nextSession ?? null);
+        setAuthLoading(false);
+
+        if (event === 'PASSWORD_RECOVERY') {
+          setRecoveryMode(true);
+        } else if (event === 'SIGNED_OUT') {
+          setCloudReady(false);
+          setSyncStatus('idle');
+          setMigrationPrompt(null);
+        }
+
+        if (hasAuthParams || window.location.search.includes('code=')) {
+          const cleanUrl = new URL(window.location.href);
+          window.history.replaceState({}, '', `${cleanUrl.origin}${cleanUrl.pathname}`);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Load meals from cloud on login & safely migrate localStorage meals
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !session?.user || recoveryMode) {
+      return;
+    }
+
+    const userId = session.user.id;
+    let active = true;
+    setCloudReady(false);
+
+    async function loadAndMigrate() {
+      if (!supabase) return;
+      const { data, error } = await supabase
+        .from('user_meal_plans')
+        .select('meals')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!active) return;
+      if (error) {
+        setSyncStatus('error');
+        setCloudReady(true);
+        return;
+      }
+
+      const cloudMeals = data ? sanitizeMeals(data.meals) : null;
+      const localMeals = loadMeals();
+      const alreadyMigrated =
+        localStorage.getItem(`${MIGRATED_PREFIX}${userId}`) === '1';
+
+      if (!cloudMeals || (cloudMeals.length === 0 && !hasMeaningfulMeals(cloudMeals))) {
+        const initialMeals = hasMeaningfulMeals(localMeals)
+          ? localMeals
+          : DEFAULT_MEALS;
+        skipNextCloudSaveRef.current = true;
+        setMeals(initialMeals);
+        setActiveMealId(initialMeals[0]?.id ?? '');
+        await persistMealsToCloud(userId, initialMeals);
+        localStorage.setItem(`${MIGRATED_PREFIX}${userId}`, '1');
+        if (countMealItems(localMeals) > 0) {
+          setToast('Refeições deste aparelho sincronizadas com sua conta!');
+        }
+        if (active) setCloudReady(true);
+        return;
+      }
+
+      if (
+        !alreadyMigrated &&
+        countMealItems(localMeals) > 0 &&
+        JSON.stringify(localMeals) !== JSON.stringify(cloudMeals)
+      ) {
+        skipNextCloudSaveRef.current = true;
+        setMeals(cloudMeals);
+        setActiveMealId(cloudMeals[0]?.id ?? '');
+        setMigrationPrompt({ cloudMeals, localMeals });
+        if (active) setCloudReady(true);
+        return;
+      }
+
+      skipNextCloudSaveRef.current = true;
+      setMeals(cloudMeals);
+      setActiveMealId((prev) =>
+        cloudMeals.some((m) => m.id === prev) ? prev : cloudMeals[0]?.id ?? ''
+      );
+      localStorage.setItem(`${MIGRATED_PREFIX}${userId}`, '1');
+      setSyncStatus('saved');
+      if (active) setCloudReady(true);
+    }
+
+    loadAndMigrate();
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user?.id, recoveryMode, persistMealsToCloud]);
+
+  // Subscribe to realtime changes and refresh when returning to tab
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !session?.user || !cloudReady) {
+      return;
+    }
+
+    const userId = session.user.id;
+    const channel = supabase
+      .channel(`meal-plan-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_meal_plans',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const nextRow = payload.new as { meals?: unknown } | null;
+          if (!nextRow || !nextRow.meals) return;
+          const incoming = sanitizeMeals(nextRow.meals);
+          skipNextCloudSaveRef.current = true;
+          setMeals(incoming);
+          setActiveMealId((prev) =>
+            incoming.some((m) => m.id === prev) ? prev : incoming[0]?.id ?? ''
+          );
+          setSyncStatus('saved');
+        }
+      )
+      .subscribe();
+
+    async function handleVisibilityChange() {
+      if (document.visibilityState !== 'visible' || !supabase) return;
+      const { data } = await supabase
+        .from('user_meal_plans')
+        .select('meals')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (data?.meals) {
+        const incoming = sanitizeMeals(data.meals);
+        skipNextCloudSaveRef.current = true;
+        setMeals(incoming);
+        setSyncStatus('saved');
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      supabase?.removeChannel(channel);
+    };
+  }, [session?.user?.id, cloudReady]);
+
+  // Save locally & debounce save to Supabase
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(meals));
     } catch {
       // Ignore storage quota errors
     }
-  }, [meals]);
+
+    if (!isSupabaseConfigured || !supabase || !session?.user || !cloudReady) {
+      return;
+    }
+
+    if (skipNextCloudSaveRef.current) {
+      skipNextCloudSaveRef.current = false;
+      return;
+    }
+
+    setSyncStatus('saving');
+    const userId = session.user.id;
+    const timer = setTimeout(() => {
+      persistMealsToCloud(userId, meals);
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [meals, session?.user?.id, cloudReady, persistMealsToCloud]);
 
   useEffect(() => {
     if (!toast) return;
@@ -367,6 +663,67 @@ export default function App() {
   const activeMealName =
     meals.find((m) => m.id === activeMealId)?.name ?? meals[0]?.name;
 
+  async function handleResolveMigration(choice: 'merge' | 'cloud' | 'local') {
+    if (!migrationPrompt || !session?.user) return;
+    const userId = session.user.id;
+    let resolved: Meal[];
+
+    if (choice === 'merge') {
+      resolved = mergeMealLists(
+        migrationPrompt.cloudMeals,
+        migrationPrompt.localMeals
+      );
+    } else if (choice === 'local') {
+      resolved = migrationPrompt.localMeals;
+    } else {
+      resolved = migrationPrompt.cloudMeals;
+    }
+
+    skipNextCloudSaveRef.current = true;
+    setMeals(resolved);
+    setActiveMealId(resolved[0]?.id ?? '');
+    setMigrationPrompt(null);
+    localStorage.setItem(`${MIGRATED_PREFIX}${userId}`, '1');
+    await persistMealsToCloud(userId, resolved);
+    showToast(
+      choice === 'merge'
+        ? 'Refeições mescladas e sincronizadas!'
+        : 'Refeições sincronizadas com sua conta!'
+    );
+  }
+
+  async function handleSignOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    showToast('Sessão encerrada');
+  }
+
+  if (authLoading) {
+    return (
+      <div className="auth-loading-screen">
+        <Loader2 size={24} className="spin" />
+        <span>Carregando sua conta...</span>
+      </div>
+    );
+  }
+
+  if (isSupabaseConfigured && (!session || recoveryMode)) {
+    return (
+      <LoginPage
+        theme={theme}
+        onToggleTheme={() =>
+          setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
+        }
+        localMealItemsCount={countMealItems(loadMeals())}
+        recoveryMode={recoveryMode}
+        onRecoveryComplete={() => {
+          setRecoveryMode(false);
+          showToast('Senha atualizada com sucesso!');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -378,7 +735,43 @@ export default function App() {
           </p>
         </div>
 
-        <div className="header-actions">
+        <div className="header-right">
+          {session?.user && (
+            <div className="account-bar">
+              <span className="account-email" title={session.user.email ?? ''}>
+                {session.user.email}
+              </span>
+              <span className={`sync-pill sync-${syncStatus}`}>
+                {syncStatus === 'saving' ? (
+                  <>
+                    <Loader2 size={12} className="spin" />
+                    Salvando
+                  </>
+                ) : syncStatus === 'error' ? (
+                  <>
+                    <CloudOff size={12} />
+                    Erro ao sincronizar
+                  </>
+                ) : (
+                  <>
+                    <Cloud size={12} />
+                    Sincronizado
+                  </>
+                )}
+              </span>
+              <button
+                type="button"
+                className="logout-btn"
+                onClick={handleSignOut}
+                title="Sair da conta"
+              >
+                <LogOut size={13} />
+                <span>Sair</span>
+              </button>
+            </div>
+          )}
+
+          <div className="header-actions">
           <nav className="tabs" aria-label="Modos de visualização">
             <button
               type="button"
@@ -409,6 +802,7 @@ export default function App() {
           >
             {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
+          </div>
         </div>
       </header>
 
@@ -970,6 +1364,37 @@ export default function App() {
           </div>
         </section>
       )}
+
+      <Modal
+        open={Boolean(migrationPrompt)}
+        title="Refeições encontradas neste aparelho"
+        subtitle="Você já tem refeições salvas na nuvem e também montou itens neste navegador antes de entrar. Como prefere continuar?"
+        closeDisabled
+      >
+        <div className="migration-actions">
+          <button
+            type="button"
+            className="pill-submit-btn"
+            onClick={() => handleResolveMigration('merge')}
+          >
+            Mesclar tudo (não perder nada)
+          </button>
+          <button
+            type="button"
+            className="secondary-btn migration-alt-btn"
+            onClick={() => handleResolveMigration('cloud')}
+          >
+            Manter apenas o que está na nuvem
+          </button>
+          <button
+            type="button"
+            className="secondary-btn migration-alt-btn"
+            onClick={() => handleResolveMigration('local')}
+          >
+            Substituir nuvem pelo deste aparelho
+          </button>
+        </div>
+      </Modal>
 
       {toast && (
         <div className="toast" role="status" aria-live="polite">
