@@ -200,6 +200,10 @@ select {
   color: var(--text-muted);
 }
 
+.label-mobile {
+  display: none;
+}
+
 .tab-btn.active .tab-count {
   color: var(--text);
 }
@@ -803,6 +807,7 @@ select {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .meals-toolbar {
@@ -814,6 +819,7 @@ select {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
 }
 
 .new-meal-form {
@@ -823,7 +829,8 @@ select {
 }
 
 .new-meal-input {
-  flex: 1 1 220px;
+  flex: 1 1 200px;
+  min-width: 0;
   height: 40px;
   padding: 0 12px;
   border-radius: var(--radius-sm);
@@ -1072,17 +1079,19 @@ select {
 /* Mobile / Tablet */
 @media (max-width: 900px) {
   .builder-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
 
   .ingredients-panel {
     position: static;
     max-height: none;
+    min-width: 0;
+    width: 100%;
   }
 
   .ingredients-list {
-    max-height: 280px;
+    max-height: 290px;
     -webkit-overflow-scrolling: touch;
   }
 }
@@ -1100,20 +1109,39 @@ select {
   .header-actions {
     width: 100%;
     gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .tabs {
-    flex: 1;
+    flex: 1 1 0;
     min-width: 0;
+    display: flex;
   }
 
   .tab-btn {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: center;
-    padding: 9px 10px;
-    font-size: 12.5px;
-    gap: 6px;
+    padding: 8px 6px;
+    font-size: 12px;
+    gap: 5px;
     white-space: nowrap;
+  }
+
+  .tab-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .tab-count-table {
+    display: none;
+  }
+
+  .theme-toggle {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
   }
 
   .rules-strip {
@@ -1163,6 +1191,33 @@ select {
 
   .rec-bar {
     gap: 10px;
+  }
+
+  .builder-subfilters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .builder-target-bar {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .builder-target-select {
+    min-width: 140px;
+  }
+
+  .draggable-item {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .draggable-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .draggable-meta {
+    flex-wrap: wrap;
   }
 
   .food-table thead {
@@ -1250,7 +1305,12 @@ select {
   }
 
   .meals-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .meal-card {
+    min-width: 0;
+    width: 100%;
   }
 
   .icon-btn {
@@ -1260,6 +1320,12 @@ select {
 
   .new-meal-form {
     flex-direction: column;
+  }
+
+  .new-meal-input {
+    flex: none;
+    width: 100%;
+    height: 42px;
   }
 
   .primary-btn {
@@ -1283,6 +1349,16 @@ select {
     right: 14px;
     bottom: 14px;
     text-align: center;
+  }
+}
+
+@media (max-width: 440px) {
+  .label-desktop {
+    display: none;
+  }
+
+  .label-mobile {
+    display: inline;
   }
 }
 

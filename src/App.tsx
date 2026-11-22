@@ -779,8 +779,9 @@ export default function App() {
               onClick={() => setActiveTab('tabela')}
             >
               <ListFilter size={16} />
-              Tabela de Alimentos
-              <span className="tab-count">{FOODS.length}</span>
+              <span className="label-desktop">Tabela de Alimentos</span>
+              <span className="label-mobile">Alimentos</span>
+              <span className="tab-count tab-count-table">{FOODS.length}</span>
             </button>
             <button
               type="button"
@@ -788,7 +789,8 @@ export default function App() {
               onClick={() => setActiveTab('refeicoes')}
             >
               <UtensilsCrossed size={16} />
-              Montar Refeições
+              <span className="label-desktop">Montar Refeições</span>
+              <span className="label-mobile">Refeições</span>
               <span className="tab-count">{dayStats.totalItems}</span>
             </button>
           </nav>
@@ -873,12 +875,12 @@ export default function App() {
               <div className="segmented" role="group" aria-label="Filtrar por recomendação">
                 {(
                   [
-                    ['Todos', FOODS.length, null],
-                    ['Permitido', countsByRec.Permitido, 'dot-green'],
-                    ['Moderado', countsByRec.Moderado, 'dot-amber'],
-                    ['Não permitido', countsByRec['Não permitido'], 'dot-red'],
+                    ['Todos', null],
+                    ['Permitido', 'dot-green'],
+                    ['Moderado', 'dot-amber'],
+                    ['Não permitido', 'dot-red'],
                   ] as const
-                ).map(([label, count, dotClass]) => (
+                ).map(([label, dotClass]) => (
                   <button
                     key={label}
                     type="button"
@@ -887,7 +889,6 @@ export default function App() {
                   >
                     {dotClass && <span className={`rule-dot ${dotClass}`} />}
                     <span>{label}</span>
-                    <span className="seg-count">{count}</span>
                   </button>
                 ))}
               </div>
