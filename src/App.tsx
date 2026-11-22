@@ -8,9 +8,11 @@ import {
   Copy,
   GripVertical,
   ListFilter,
+  Moon,
   Pencil,
   Plus,
   Search,
+  Sun,
   Trash2,
   UtensilsCrossed,
   X,
@@ -20,8 +22,23 @@ import { FoodItem, Meal, Recommendation } from './types';
 
 type ActiveTab = 'tabela' | 'refeicoes';
 type RecommendationFilter = 'Todos' | Recommendation;
+type Theme = 'light' | 'dark';
 
 const STORAGE_KEY = 'dieta-fase1-meals-v1';
+const THEME_STORAGE_KEY = 'dieta-fase1-theme-v1';
+
+function loadTheme(): Theme {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+    if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+  } catch {
+    // Fallback to light theme
+  }
+  return 'light';
+}
 
 const DEFAULT_MEALS: Meal[] = [
   { id: 'cafe-da-manha', name: 'Café da manhã', foodIds: [] },
@@ -55,7 +72,17 @@ function getRecDotClass(rec: Recommendation): string {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<Theme>(loadTheme);
   const [activeTab, setActiveTab] = useState<ActiveTab>('tabela');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Ignore storage errors
+    }
+  }, [theme]);
 
   // Table tab filters
   const [tableSearch, setTableSearch] = useState('');
@@ -344,26 +371,38 @@ export default function App() {
           </p>
         </div>
 
-        <nav className="tabs" aria-label="Modos de visualização">
+        <div className="header-actions">
+          <nav className="tabs" aria-label="Modos de visualização">
+            <button
+              type="button"
+              className={`tab-btn ${activeTab === 'tabela' ? 'active' : ''}`}
+              onClick={() => setActiveTab('tabela')}
+            >
+              <ListFilter size={16} />
+              Tabela de Alimentos
+              <span className="tab-count">{FOODS.length}</span>
+            </button>
+            <button
+              type="button"
+              className={`tab-btn ${activeTab === 'refeicoes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('refeicoes')}
+            >
+              <UtensilsCrossed size={16} />
+              Montar Refeições
+              <span className="tab-count">{dayStats.totalItems}</span>
+            </button>
+          </nav>
+
           <button
             type="button"
-            className={`tab-btn ${activeTab === 'tabela' ? 'active' : ''}`}
-            onClick={() => setActiveTab('tabela')}
+            className="theme-toggle"
+            onClick={() => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}
+            aria-label={theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
+            title={theme === 'light' ? 'Modo escuro' : 'Modo claro'}
           >
-            <ListFilter size={16} />
-            Tabela de Alimentos
-            <span className="tab-count">{FOODS.length}</span>
+            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'refeicoes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('refeicoes')}
-          >
-            <UtensilsCrossed size={16} />
-            Montar Refeições
-            <span className="tab-count">{dayStats.totalItems}</span>
-          </button>
-        </nav>
+        </div>
       </header>
 
       <section className="rules-strip" aria-label="Regras da Fase 1">
