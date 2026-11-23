@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   getAuthRedirectUrl,
+  isHomolog,
   isSupabaseConfigured,
   supabase,
 } from '../lib/supabase';
@@ -317,7 +318,10 @@ export function LoginPage({
   return (
     <div className="login-page">
       <div className="login-topbar">
-        <span className="login-topbar-brand">Guia Fase 1 • 15 dias</span>
+        <span className="login-topbar-brand">
+          Guia Fase 1 • 15 dias
+          {isHomolog && <span className="env-badge">HOMOLOG</span>}
+        </span>
         <button
           type="button"
           className="theme-toggle login-theme-btn"
@@ -332,6 +336,11 @@ export function LoginPage({
       <div className="login-split">
         <div className="login-left">
           <div className="login-form-wrap">
+            {isHomolog && (
+              <div className="login-homolog-pill">
+                <span className="env-badge">AMBIENTE HOMOLOG</span>
+              </div>
+            )}
             <h1 className="login-title">Bem-vinda de volta!</h1>
             <p className="login-subtitle">
               Organize os 15 dias da <strong>Fase 1</strong> com praticidade e

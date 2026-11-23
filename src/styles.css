@@ -2027,3 +2027,40 @@ select {
     padding: 20px;
   }
 }
+
+
+.env-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--amber-bg, #fffbeb);
+  color: var(--accent-amber);
+  border: 1px solid var(--amber-border, #fde68a);
+  vertical-align: middle;
+}
+
+[data-theme='dark'] .env-badge {
+  background: #2b2112;
+  border-color: #5c4318;
+}
+
+.login-homolog-pill {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.login-homolog-pill .env-badge {
+  margin-left: 0;
+}
+
+@media (max-width: 900px) {
+  .login-homolog-pill {
+    display: none;
+  }
+}

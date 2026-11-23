@@ -25,7 +25,12 @@ import {
 import { LoginPage } from './components/LoginPage';
 import { Modal } from './components/Modal';
 import { CATEGORIES, FOODS } from './data/foods';
-import { isSupabaseConfigured, supabase } from './lib/supabase';
+import {
+  isHomolog,
+  isSupabaseConfigured,
+  storagePrefix,
+  supabase,
+} from './lib/supabase';
 import { FoodItem, Meal, Recommendation } from './types';
 
 type ActiveTab = 'tabela' | 'refeicoes';
@@ -33,9 +38,9 @@ type RecommendationFilter = 'Todos' | Recommendation;
 type Theme = 'light' | 'dark';
 type SyncStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-const STORAGE_KEY = 'dieta-fase1-meals-v1';
-const THEME_STORAGE_KEY = 'dieta-fase1-theme-v1';
-const MIGRATED_PREFIX = 'dieta-fase1-migrated-v1:';
+const STORAGE_KEY = `${storagePrefix}dieta-fase1-meals-v1`;
+const THEME_STORAGE_KEY = `${storagePrefix}dieta-fase1-theme-v1`;
+const MIGRATED_PREFIX = `${storagePrefix}dieta-fase1-migrated-v1:`;
 
 function loadTheme(): Theme {
   try {
@@ -728,7 +733,10 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <p className="brand-eyebrow">Dieta Fase 1 • 15 dias</p>
+          <p className="brand-eyebrow">
+            Dieta Fase 1 • 15 dias
+            {isHomolog && <span className="env-badge">HOMOLOG</span>}
+          </p>
           <h1 className="app-title">Guia de Alimentos & Refeições</h1>
           <p className="app-subtitle">
             Baseado na tabela de Teco Mendes Nutricionista ({FOODS.length} alimentos)
